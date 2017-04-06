@@ -1,37 +1,52 @@
 // This sectin contains some game constants. It is not super interesting
-var GAME_WIDTH = 375;
+var GAME_WIDTH  = 375;
 var GAME_HEIGHT = 500;
 
-var ENEMY_WIDTH = 75;
+var ENEMY_WIDTH  = 75;
 var ENEMY_HEIGHT = 156;
-var MAX_ENEMIES = 3;
+var MAX_ENEMIES  = 3;
 
-var PLAYER_WIDTH = 75;
+var PLAYER_WIDTH  = 75;
 var PLAYER_HEIGHT = 54;
 
+var LASER_HEIGHT = 75;
+var LASER_WIDTH = 75;
+
 // These two constants keep us from using "magic numbers" in our code
-var LEFT_ARROW_CODE = 37;
+var LEFT_ARROW_CODE  = 37;
 var RIGHT_ARROW_CODE = 39;
+var SPACEBAR_CODE    = 32;
 
 // These two constants allow us to DRY
-var MOVE_LEFT = 'left';
+var MOVE_LEFT  = 'left';
 var MOVE_RIGHT = 'right';
+var MOVE_UP    = 'up';
 
 // Preload game images
 var images = {};
-['enemy.png', 'stars.png', 'player.png'].forEach(imgName => {
+['enemy.png', 'stars.png', 'player.png','laser.png'].forEach(imgName => {
     var img = document.createElement('img');
     img.src = 'images/' + imgName;
     images[imgName] = img;
 });
 
 
+class Entity {
+    render(ctx) {
+        ctx.drawImage(this.sprite, this.x, this.y);
+    }
 
+    update(timeDiff) {
+        this.y = this.y + timeDiff * this.speed;
+    }
+}
 
 
 // This section is where you will be doing most of your coding
-class Enemy {
+class Enemy extends Entity {
     constructor(xPos) {
+        super();
+        
         this.x = xPos;
         this.y = -ENEMY_HEIGHT;
         this.sprite = images['enemy.png'];
@@ -39,18 +54,14 @@ class Enemy {
         // Each enemy should have a different speed
         this.speed = Math.random() / 2 + 0.25;
     }
-
-    update(timeDiff) {
-        this.y = this.y + timeDiff * this.speed;
-    }
-
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
+    
+    //update(timeDiff) was removed from here and put into Entity
 }
 
-class Player {
+class Player extends Entity {
     constructor() {
+        super(); 
+        
         this.x = 2 * PLAYER_WIDTH;
         this.y = GAME_HEIGHT - PLAYER_HEIGHT - 10;
         this.sprite = images['player.png'];
@@ -65,13 +76,16 @@ class Player {
             this.x = this.x + PLAYER_WIDTH;
         }
     }
-
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
 }
 
-
+class Laser extends Entity {
+    constructor() {
+        super();
+        
+        this.sprite = images['laser.png'];
+        this.speed = 0.3;
+    }
+}
 
 
 
@@ -120,7 +134,7 @@ class Engine {
 
         var enemySpot;
         // Keep looping until we find a free enemy spot at random
-        while (!enemySpot || this.enemies[enemySpot]) {
+        while (this.enemies[enemySpot]) {
             enemySpot = Math.floor(Math.random() * enemySpots);
         }
 
@@ -139,7 +153,10 @@ class Engine {
             }
             else if (e.keyCode === RIGHT_ARROW_CODE) {
                 this.player.move(MOVE_RIGHT);
-            }
+            }/*
+            else if (e.keyCode === SPACEBAR_CODE) {
+                this.laser.move(MOVE_UP);
+            }*/
         });
 
         this.gameLoop();
@@ -162,6 +179,10 @@ class Engine {
 
         // Increase the score!
         this.score += timeDiff;
+        
+        if (this.score % 15000 == 0) {
+            MAX_ENEMIES++;
+        }
 
         // Call update on all enemies
         this.enemies.forEach(enemy => enemy.update(timeDiff));
@@ -200,6 +221,18 @@ class Engine {
 
     isPlayerDead() {
         // TODO: fix this function!
+        
+        for (var i = 0; i < this.enemies.length; i++) {
+            if (this.enemies[i]) {
+                if (
+                    this.enemies[i].x === this.player.x 
+                    && this.enemies[i].y+ENEMY_HEIGHT-20 > this.player.y // 20 pixels of leeway for the head of the cat
+                    && this.enemies[i].y+40 < this.player.y // 40 pixels of leeway in the rainbow
+                ) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 }
