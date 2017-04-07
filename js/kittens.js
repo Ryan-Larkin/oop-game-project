@@ -1,30 +1,39 @@
-// This sectin contains some game constants. It is not super interesting
-var GAME_WIDTH  = 375;
-var GAME_HEIGHT = 500;
+var backgroundSong = new Audio('/oop-game-project/audio/Most awesome 8-bit song ever (mp3cut.net).mp3');
 
-var ENEMY_WIDTH  = 75;
-var ENEMY_HEIGHT = 156;
-var MAX_ENEMIES  = 3;
+// This section contains some game constants. It is not super interesting
+var GAME_WIDTH    = 600;
+var GAME_HEIGHT   = 500;
+
+var ENEMY_WIDTH   = 75;
+var ENEMY_HEIGHT  = 156;
+var MAX_ENEMIES   = 8;
+
+var MAX_LASERS    = 1;
 
 var PLAYER_WIDTH  = 75;
 var PLAYER_HEIGHT = 54;
 
-var LASER_HEIGHT = 75;
-var LASER_WIDTH = 75;
+var LASER_HEIGHT  = 75;
+var LASER_WIDTH   = 75;
 
-// These two constants keep us from using "magic numbers" in our code
+var PLAYER_LIVES  = 3;
+
+// These three constants keep us from using "magic numbers" in our code
 var LEFT_ARROW_CODE  = 37;
 var RIGHT_ARROW_CODE = 39;
+var UP_ARROW_CODE    = 38;
+var DOWN_ARROW_CODE  = 40;
 var SPACEBAR_CODE    = 32;
 
-// These two constants allow us to DRY
+// These three constants allow us to DRY
 var MOVE_LEFT  = 'left';
 var MOVE_RIGHT = 'right';
 var MOVE_UP    = 'up';
+var MOVE_DOWN  = 'down';
 
 // Preload game images
 var images = {};
-['enemy.png', 'stars.png', 'player.png','laser.png'].forEach(imgName => {
+['enemy.png', 'stars.jpg', 'player.png','laser.png'].forEach(imgName => {
     var img = document.createElement('img');
     img.src = 'images/' + imgName;
     images[imgName] = img;
@@ -36,8 +45,13 @@ class Entity {
         ctx.drawImage(this.sprite, this.x, this.y);
     }
 
-    update(timeDiff) {
-        this.y = this.y + timeDiff * this.speed;
+    update(timeDiff, direction) {
+        if (direction === 'down')  {
+            this.y = this.y + timeDiff * this.speed;
+        }
+        else {
+            this.y = this.y - timeDiff * this.speed;
+        }
     }
 }
 
@@ -50,12 +64,13 @@ class Enemy extends Entity {
         this.x = xPos;
         this.y = -ENEMY_HEIGHT;
         this.sprite = images['enemy.png'];
+        
+        this.width  = ENEMY_WIDTH;
+        this.height = ENEMY_HEIGHT;
 
         // Each enemy should have a different speed
         this.speed = Math.random() / 2 + 0.25;
     }
-    
-    //update(timeDiff) was removed from here and put into Entity
 }
 
 class Player extends Entity {
@@ -65,6 +80,11 @@ class Player extends Entity {
         this.x = 2 * PLAYER_WIDTH;
         this.y = GAME_HEIGHT - PLAYER_HEIGHT - 10;
         this.sprite = images['player.png'];
+        
+        this.width  = PLAYER_WIDTH;
+        this.height = PLAYER_HEIGHT;
+        
+        this.playerLives = PLAYER_LIVES;
     }
 
     // This method is called by the game engine when left/right arrows are pressed
@@ -75,18 +95,48 @@ class Player extends Entity {
         else if (direction === MOVE_RIGHT && this.x < GAME_WIDTH - PLAYER_WIDTH) {
             this.x = this.x + PLAYER_WIDTH;
         }
+        else if (direction === MOVE_UP &&  this.y > PLAYER_HEIGHT) {
+           this.y = this.y - PLAYER_HEIGHT;
+       } 
+        else if (direction === MOVE_DOWN && this.y < GAME_HEIGHT  - (PLAYER_HEIGHT + 10)) {
+           this.y = this.y + PLAYER_HEIGHT;
+       }
+    }
+    
+    changeLives(change) {
+        this.playerLives += change;
+    }
+    
+    
+    shoot() {
+        if (!this.lasers) {
+            this.lasers = [];
+        }
+    
+        if (this.lasers.length < MAX_LASERS) {
+            var laser = new Laser(this.x, this.y-PLAYER_HEIGHT);
+            this.lasers.push(laser);
+        }
+        
+        console.log(this.lasers);
     }
 }
 
 class Laser extends Entity {
-    constructor() {
+    constructor(xPos, yPos) {
         super();
         
+        this.x = xPos;
+        //this.y = GAME_HEIGHT - PLAYER_HEIGHT;
+        this.y = yPos;
+        
+        this.width  = LASER_WIDTH;
+        this.height = LASER_HEIGHT;
+        
         this.sprite = images['laser.png'];
-        this.speed = 0.3;
+        this.speed = 0.6;
     }
 }
-
 
 
 /*
@@ -153,10 +203,16 @@ class Engine {
             }
             else if (e.keyCode === RIGHT_ARROW_CODE) {
                 this.player.move(MOVE_RIGHT);
-            }/*
+            }
+            else if (e.keyCode === UP_ARROW_CODE) {
+                this.player.move(MOVE_UP);
+            } 
+            else if (e.keyCode === DOWN_ARROW_CODE) {
+                this.player.move(MOVE_DOWN);
+            }
             else if (e.keyCode === SPACEBAR_CODE) {
-                this.laser.move(MOVE_UP);
-            }*/
+                this.player.shoot();
+            }
         });
 
         this.gameLoop();
@@ -179,18 +235,27 @@ class Engine {
 
         // Increase the score!
         this.score += timeDiff;
-        
-        if (this.score % 15000 == 0) {
-            MAX_ENEMIES++;
-        }
 
         // Call update on all enemies
-        this.enemies.forEach(enemy => enemy.update(timeDiff));
+        this.enemies.forEach(enemy => enemy.update(timeDiff, 'down'));
+        
+        // if(this.isEnemyDead()){
+        //     return true;
+        // }
+        this.isEnemyDead();
 
         // Draw everything!
-        this.ctx.drawImage(images['stars.png'], 0, 0); // draw the star bg
+        this.ctx.drawImage(images['stars.jpg'], 0, 0); // draw the star bg
         this.enemies.forEach(enemy => enemy.render(this.ctx)); // draw the enemies
         this.player.render(this.ctx); // draw the player
+        
+        if (this.player.lasers) {
+            for (var i = 0, l = this.player.lasers.length; i < l; i++) {
+                this.player.lasers[i].update(timeDiff, 'up'); // update each laser that has been used
+            }
+            
+            this.player.lasers.forEach(laser => laser.render(this.ctx)); // draw the laser
+        }
 
         // Check if any enemies should die
         this.enemies.forEach((enemy, enemyIdx) => {
@@ -199,6 +264,15 @@ class Engine {
             }
         });
         this.setupEnemies();
+        
+        if (this.player.lasers) {
+            this.player.lasers.forEach((laser, laserIdx) => {
+                if ((laser.y + LASER_HEIGHT) < 0) {
+                    this.player.lasers.splice(laserIdx, 1);
+                }
+            });
+        }
+            
 
         // Check if player is dead
         if (this.isPlayerDead()) {
@@ -218,21 +292,52 @@ class Engine {
             requestAnimationFrame(this.gameLoop);
         }
     }
-
+    
+// Can turn these two functions (isPlayerDead and isEnemyDead) into 1 function that checks collision between two elements
+    isColliding(entity1, entity2) {
+        if (entity1.x < entity2.x + entity2.width 
+            && entity1.x + entity1.width > entity2.x 
+            && entity1.y < entity2.y + entity2.height 
+            && entity1.height + entity1.y > entity2.y) {
+                return true;
+            }
+        else {
+            return false;
+        }
+    }
+    
     isPlayerDead() {
         // TODO: fix this function!
-        
-        for (var i = 0; i < this.enemies.length; i++) {
-            if (this.enemies[i]) {
-                if (
-                    this.enemies[i].x === this.player.x 
-                    && this.enemies[i].y+ENEMY_HEIGHT-20 > this.player.y // 20 pixels of leeway for the head of the cat
-                    && this.enemies[i].y+40 < this.player.y // 40 pixels of leeway in the rainbow
-                ) {
+        for (var i = 0, l = this.enemies.length; i < l; i++) {
+            if (this.isColliding(this.player, this.enemies[i])) {
+                this.player.changeLives(-1);
+                delete this.enemies[i];
+                
+                if (this.player.playerLives === 0) {
                     return true;
                 }
             }
         }
+        return false;
+        
+    }
+    
+    isEnemyDead() {
+        for (var i = 0, l = this.enemies.length; i < l; i++) {
+            if (this.player.lasers) {
+                for (var j = 0, k = this.player.lasers.length; j < k; j++) {
+                    if (this.isColliding(this.player.lasers[j], this.enemies[i])) {
+                        delete this.enemies[i];
+                        this.player.lasers.splice(j, 1);
+                        
+                        this.score += 1000;
+                        
+                        return true;
+                    }
+                }
+            }
+        }
+            
         return false;
     }
 }
@@ -241,6 +346,6 @@ class Engine {
 
 
 
-// This section will start the game
+// // This section will start the game
 var gameEngine = new Engine(document.getElementById('app'));
 gameEngine.start();
