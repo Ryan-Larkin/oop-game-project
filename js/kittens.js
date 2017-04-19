@@ -16,7 +16,7 @@ var PLAYER_HEIGHT = 54;
 var LASER_HEIGHT  = 75;
 var LASER_WIDTH   = 75;
 
-var PLAYER_LIVES  = 3;
+var PLAYER_LIVES  = 300;
 
 // These three constants keep us from using "magic numbers" in our code
 var LEFT_ARROW_CODE  = 37;
@@ -30,6 +30,8 @@ var MOVE_LEFT  = 'left';
 var MOVE_RIGHT = 'right';
 var MOVE_UP    = 'up';
 var MOVE_DOWN  = 'down';
+
+//var canShoot = true;
 
 // Preload game images
 var images = {};
@@ -108,17 +110,18 @@ class Player extends Entity {
     }
     
     
+    //shoot(canShoot) {
     shoot() {
         if (!this.lasers) {
             this.lasers = [];
         }
-    
-        if (this.lasers.length < MAX_LASERS) {
-            var laser = new Laser(this.x, this.y-PLAYER_HEIGHT);
-            this.lasers.push(laser);
-        }
         
-        console.log(this.lasers);
+        //while (canShoot) {
+            if (this.lasers.length < MAX_LASERS) {
+                var laser = new Laser(this.x, this.y-PLAYER_HEIGHT);
+                this.lasers.push(laser);
+            }
+        //}
     }
 }
 
@@ -127,7 +130,6 @@ class Laser extends Entity {
         super();
         
         this.x = xPos;
-        //this.y = GAME_HEIGHT - PLAYER_HEIGHT;
         this.y = yPos;
         
         this.width  = LASER_WIDTH;
@@ -212,6 +214,11 @@ class Engine {
             }
             else if (e.keyCode === SPACEBAR_CODE) {
                 this.player.shoot();
+                //this.player.shoot(canShoot);
+                // canShoot = false
+                // document.setTimeout(function() {
+                //     canShoot = true
+                // }, 5000);
             }
         });
 
@@ -298,7 +305,8 @@ class Engine {
         if (entity1.x < entity2.x + entity2.width 
             && entity1.x + entity1.width > entity2.x 
             && entity1.y < entity2.y + entity2.height 
-            && entity1.height + entity1.y > entity2.y) {
+            && entity1.height + entity1.y > entity2.y) 
+            {
                 return true;
             }
         else {
